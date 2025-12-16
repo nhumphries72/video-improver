@@ -66,11 +66,29 @@ def get_yt_video(url, output_path):
         }]
     }
     
+    cookie_file_path = None
+    
     if cookies_data:
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_cookie_file:
-            tmp_cookie_file.write(cookies_data)
-            cookie_file_path = tmp_cookie_file.name
-        ydl_opts['cookiefile'] = cookie_file_path
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_cookie_file:
+                tmp_cookie_file.write(cookies_data)
+                cookie_file_path = tmp_cookie_file.name
+                
+            if os.path.exists(cookie_file_path):
+                file_size = os.path.getsize(cookie_file_path)
+                st.info(f"Cookie file created at: {cookie_file_path} (Size: {file_size} bytes)")
+                
+                with open(cookie_file_path, 'r') as f:
+                    first_line = f.readline().strip()
+                if not first_line.startswith('# Netscape HTTP Cookie File'):
+                    st.error("Cookie file header is missing or corrupted")
+                    return
+                
+            ydl_opts['cookiefile'] = cookie_file_path
+        
+        except Exception as e:
+            st.error(f"Error handling cookie file: {e}")
+            return
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
