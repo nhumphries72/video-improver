@@ -6,6 +6,7 @@ import yt_dlp
 import os
 import time
 from proglog import ProgressBarLogger
+import shutil
 
 max_duration = 300
 cache_dir = "temp_videos"
@@ -188,8 +189,8 @@ with input_container:
     if input_method == "YouTube Link":
         url = st.text_input("Paste video URL:")
         if st.button("Download"):
-            if not os.path.exists("ffmpeg.exe"):
-                st.error("Missing ffmpeg.exe in project folder")
+            if shutil.which("ffmpeg") is None:
+                st.error("FFmpeg is not available on the system PATH. Deployment failed to find/install it")
             else:
                 path = os.path.join(cache_dir, f"in_{int(time.time())}.mp4")
                 with st.spinner("Downloading..."):
