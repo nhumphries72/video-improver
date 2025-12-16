@@ -7,6 +7,7 @@ import os
 import time
 from proglog import ProgressBarLogger
 import shutil
+import tempfile
 
 max_duration = 300
 cache_dir = "temp_videos"
@@ -51,7 +52,7 @@ st.markdown("""
 # Helper functions
 def get_yt_video(url, output_path):
     
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    cookies_data = os.environ.get('youtube_cookies')
     
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
@@ -65,8 +66,18 @@ def get_yt_video(url, output_path):
         }]
     }
     
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+    if cookies_data:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_cookie_file:
+            tmp_cookie_file.write(cookies_data)
+            cookie_file_path = tmp_cookie_file.name
+        ydl_opts['cookiefile'] = cookie_file_path
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    finally:
+        if cookies_data:
+            os.remove(cookie_file_path)
         
 
 def process_video(input_path, output_path):
