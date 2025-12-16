@@ -12,6 +12,12 @@ import tempfile
 max_duration = 300
 cache_dir = "temp_videos"
 
+if 'youtube_cookies' in os.environ:
+    st.sidebar.success("Environment variable 'youtube_cookies' found. Proceeding.")
+else:
+    st.sidebar.error("Environment variable 'youtube_cookies' not found")
+    
+
 st.set_page_config(page_title="Video Enhancer", layout="centered")
 
 if "first_run" not in st.session_state:
