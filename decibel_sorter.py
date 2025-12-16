@@ -11,11 +11,6 @@ import tempfile
 
 max_duration = 300
 cache_dir = "temp_videos"
-
-if 'youtube_cookies' in os.environ:
-    st.sidebar.success("Environment variable 'youtube_cookies' found. Proceeding.")
-else:
-    st.sidebar.error("Environment variable 'youtube_cookies' not found")
     
 
 st.set_page_config(page_title="Video Enhancer", layout="centered")
@@ -81,9 +76,6 @@ def get_yt_video(url, output_path):
                 cookie_file_path = tmp_cookie_file.name
                 
             if os.path.exists(cookie_file_path):
-                file_size = os.path.getsize(cookie_file_path)
-                st.info(f"Cookie file created at: {cookie_file_path} (Size: {file_size} bytes)")
-                
                 with open(cookie_file_path, 'r') as f:
                     first_line = f.readline().strip()
                 if not first_line.startswith('# Netscape HTTP Cookie File'):
