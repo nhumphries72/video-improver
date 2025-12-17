@@ -152,14 +152,20 @@ def process_video(input_path, output_path):
     
             frame_data.sort(key=lambda x: x[1])
 
-            sorted_indices = [x[0] for x in frame_data]
+            sorted_indices = np.array([x[0] for x in frame_data])
                 
             def make_frame_sorted(get_frame, t):
+                
+                t_array = np.asarray(t)
         
-                idx = int(t * fps)
+                idx = int(t_array * fps)
                 if idx >= len(sorted_indices): idx = len(sorted_indices) - 1
                 
-                return get_frame(sorted_indices[idx] / fps)
+                original_times = sorted_indices[idx] / fps
+                
+                if np.isscalar(t):
+                    return get_frame(original_times.item())
+                return get_frame(original_times)
             
             final_clip = clip.transform(make_frame_sorted)
             final_clip.audio = clip.audio.transform(make_frame_sorted)
