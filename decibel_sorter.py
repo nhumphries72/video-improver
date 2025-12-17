@@ -156,19 +156,16 @@ def process_video(input_path, output_path):
                 
             def make_frame_sorted(get_frame, t):
                 
-                if isinstance(t, np.ndarray):
-                    idxs = (t * fps).astype(int)
-                    idxs = np.clip(idxs, 0, len(sorted_indices) - 1)
-                    mapped_times = sorted_indices[idxs] / fps
-                    
-                    return np.array([get_frame(mt) for mt in mapped_times])
-        
-                else:
-                    idx = int(t * fps)
-                    idx = max(0, min(idx, len(sorted_indices) - 1))
-                    original_t = sorted_indices[idx] / fps
-                    
-                    return get_frame(original_t)
+                t_val = np.asarray(t)
+                idxs = (t_val * fps).astype(int)
+                idxs = np.clip(idxs, 0, len(sorted_indices) - 1)
+                
+                resampled_t = sorted_indices[idxs] / fps
+                
+                if np.isscalar(t):
+                    return get_frame(resampled_t.item())
+                
+                return get_frame(resampled_t)
             
             final_clip = clip.transform(make_frame_sorted)
             final_clip.audio = clip.audio.transform(make_frame_sorted)
