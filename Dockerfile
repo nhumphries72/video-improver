@@ -16,4 +16,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["/bin/bash", "-c", "streamlit run decibel_sorter.py --server.maxUploadSize 1024 --server.port=8501 --server.enableCORS=false --server.enableXsrfProtection=false"]
+CMD ["/bin/bash", "-c", "streamlit run decibel_sorter.py --server.maxUploadSize 1024 --server.port $PORT --server.address 0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false"]
