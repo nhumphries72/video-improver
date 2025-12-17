@@ -161,8 +161,8 @@ def process_video(input_path, output_path):
                 
                 return get_frame(sorted_indices[idx] / fps)
             
-            final_clip = clip.fl(make_frame_sorted)
-            final_clip.audio = clip.audio.fl(make_frame_sorted)
+            final_clip = clip.transform(make_frame_sorted)
+            final_clip.audio = clip.audio.transform(make_frame_sorted)
     
             status.text("Reassembling frames...")
             
