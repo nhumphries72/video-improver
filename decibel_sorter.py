@@ -8,6 +8,7 @@ import time
 from proglog import ProgressBarLogger
 import shutil
 import tempfile
+import gc
 
 max_duration = 300
 cache_dir = "temp_videos"
@@ -102,104 +103,88 @@ def process_video(input_path, output_path):
     progress = st.progress(0)
     
     try:
-        clip = VideoFileClip(input_path)
-    except Exception as e:
-        st.error(f"Could not load video: {e}")
-        return
-    
-    if clip.duration > max_duration:
-        st.warning(f"Video is too long ({clip.duration}s). Trimming to {max_duration}s.")
-        clip = clip.subclip(0, max_duration)
-        
-    duration = clip.duration
-    fps = clip.fps if clip.fps else 30
-    
-    status.text("Ripping audio DNA...")
-    
-    audio_bitrate = 44100
-    audio_array = clip.audio.to_soundarray(fps=audio_bitrate).astype('float32')
-    
-    total_samples = len(audio_array)
-    samples_per_frame = audio_bitrate / fps
-    num_frames = int(duration * fps)
-    
-    status.text("Calculating volume by frame...")
-    
-    frame_data = []
-    for i in range(num_frames):
-        start = int(i * samples_per_frame)
-        end = int((i + 1) * samples_per_frame)
-        
-        # Stupid boundary handling
-        if end > total_samples: end = total_samples
-        
-        chunk = audio_array[start:end]
-        
-        # Stupid boundary handling again
-        if chunk.size > 0:
-            # Always use RMS for everything
-            loudness = np.sqrt(np.mean(chunk**2))
-        else:
-            loudness = 0.0
+        with VideoFileClip(input_path) as clip:
+            if clip.duration > max_duration:
+                st.warning(f"Video is too long ({clip.duration}s). Trimming to {max_duration}s.")
+                clip = clip.subclip(0, max_duration)
             
-        frame_data.append((i, loudness))
-            
-    status.text("Sorting...")
+            duration = clip.duration
+            fps = clip.fps if clip.fps else 30
     
-    frame_data.sort(key=lambda x: x[1])
+            status.text("Ripping audio DNA...")
+    
+            audio_bitrate = 11025
+            audio_array = clip.audio.to_soundarray(fps=audio_bitrate).astype('float32')
 
-    sorted_indices = [x[0] for x in frame_data]
+            # Average out channels to save memory
+            if audio_array.ndim > 1:
+                audio_array = audio_array.mean(axis=1)
     
-    status.text("Reassembling frames...")
+            total_samples = len(audio_array)
+            samples_per_frame = audio_bitrate / fps
+            num_frames = int(duration * fps)
     
-    new_audio_segments = []
-    for idx in sorted_indices:
-        start = int(idx * samples_per_frame)
-        end = int((idx + 1) * samples_per_frame)
-        if end <= total_samples:
-            new_audio_segments.append(audio_array[start:end])
+            status.text("Calculating volume by frame...")
+    
+            frame_data = []
+            for i in range(num_frames):
+                start = int(i * samples_per_frame)
+                end = int((i + 1) * samples_per_frame)
+                
+                # Stupid boundary handling
+                if end > total_samples: end = total_samples
+                
+                chunk = audio_array[start:end]
+                
+                # Stupid boundary handling again
+                if chunk.size > 0:
+                    # Always use RMS for everything
+                    loudness = np.sqrt(np.mean(chunk**2))
+                else:
+                    loudness = 0.0
+                    
+                frame_data.append((i, loudness))
+                
+            del audio_array
+            gc.collect()
             
-    if new_audio_segments:
-        new_audio_array = np.concatenate(new_audio_segments).astype('float32')
-        new_audio = AudioArrayClip(new_audio_array, fps=audio_bitrate)
-        del new_audio_segments
-        del audio_array
-    else:
-        # I have no solution if something breaks so the ol' rollback strat
-        new_audio = clip.audio
+            status.text("Sorting...")
+    
+            frame_data.sort(key=lambda x: x[1])
+
+            sorted_indices = [x[0] for x in frame_data]
+                
+            def make_frame_sorted(get_frame, t):
+        
+                idx = int(t * fps)
+                if idx >= len(sorted_indices): idx = len(sorted_indices) - 1
+                
+                return get_frame(sorted_indices[idx] / fps)
             
-    def make_frame_sorted(t):
-        
-        frame_idx_new = int(t * fps)
-        
-        if frame_idx_new >= len(sorted_indices):
-            frame_idx_new = len(sorted_indices) - 1
+            final_clip = clip.fl(make_frame_sorted)
+            final_clip.audio = clip.audio.fl(make_frame_sorted)
+    
+            status.text("Reassembling frames...")
             
-        original_idx = sorted_indices[frame_idx_new]
-        
-        t_original = original_idx / fps
-        
-        return clip.get_frame(t_original)
-    
-    final_clip = clip.transform(lambda gf, t: make_frame_sorted(t))
-    final_clip = final_clip.with_audio(new_audio)
-    
-    logger = StreamlitLogger(progress, status)
-    
-    final_clip.write_videofile(
-        output_path,
-        fps=fps,
-        codec='libx264',
-        audio_codec='aac',
-        preset='ultrafast',
-        threads=4,
-        logger=logger
-    )
-    
-    clip.close()
-    final_clip.close()
-    progress.progress(100)
-    status.success("Sorted successfully")
+            logger = StreamlitLogger(progress, status)
+            
+            final_clip.write_videofile(
+                output_path,
+                fps=fps,
+                codec='libx264',
+                audio_codec='aac',
+                preset='ultrafast',
+                threads=1,
+                logger=logger
+            )
+    except Exception as e:
+        st.error(f"Processing Error: {e}")
+    finally:
+        if 'clip' in locals(): del clip
+        if 'final_clip' in locals(): del final_clip
+        gc.collect()
+        progress.progress(100)
+        status.success("Sorted successfully")
     
 
 # --- UI ---
