@@ -113,12 +113,8 @@ def process_video(input_path, output_path):
     
             status.text("Ripping audio DNA...")
     
-            audio_bitrate = 11025
+            audio_bitrate = 22050
             audio_array = clip.audio.to_soundarray(fps=audio_bitrate).astype('float32')
-
-            # Average out channels to save memory
-            if audio_array.ndim > 1:
-                audio_array = audio_array.mean(axis=1)
     
             total_samples = len(audio_array)
             samples_per_frame = audio_bitrate / fps
@@ -144,33 +140,46 @@ def process_video(input_path, output_path):
                     loudness = 0.0
                     
                 frame_data.append((i, loudness))
-                
-            del audio_array
-            gc.collect()
             
             status.text("Sorting...")
     
             frame_data.sort(key=lambda x: x[1])
-
             sorted_indices = np.array([x[0] for x in frame_data])
+            
+            status.text("Stitching audio...")
+            new_audio_segments = []
+            for idx in sorted_indices:
+                start = int(idx * samples_per_frame)
+                end = int((idx + 1) * samples_per_frame)
+                if end <= total_samples:
+                    new_audio_segments.append(audio_array[start:end])
+                    
+            if new_audio_segments:
+                new_audio_array = np.concatenate(new_audio_segments).astype('float32')
+                new_audio_clip = AudioArrayClip(new_audio_array, fps=audio_bitrate)
+                
+                del new_audio_segments
+                del audio_array
+                gc.collect()
+            else:
+                new_audio_clip = clip.audio
+                
+            status.text("Mapping video frames...")
                 
             def make_frame_sorted(get_frame, t):
                 
-                t_val = np.asarray(t)
-                idxs = (t_val * fps).astype(int)
-                idxs = np.clip(idxs, 0, len(sorted_indices) - 1)
+                frame_idx_new = (int(t * fps))
+                if frame_idx_new >= len(sorted_indices): frame_idx_new = len(sorted_indices) - 1
                 
-                resampled_t = sorted_indices[idxs] / fps
+                original_idx = sorted_indices[frame_idx_new]
+                t_original = original_idx / fps
                 
-                if np.isscalar(t):
-                    return get_frame(resampled_t.item())
-                
-                return get_frame(resampled_t)
+                return clip.get_frame(t_original)
             
-            final_clip = clip.transform(make_frame_sorted)
-            final_clip.audio = clip.audio.transform(make_frame_sorted)
+            final_clip = clip.transform(lambda gf, t: make_frame_sorted(t))
+            final_clip = final_clip.set_audio(new_audio_clip)
     
-            status.text("Reassembling frames...")
+            status.text("Rendering...")
             
             logger = StreamlitLogger(progress, status)
             
@@ -186,8 +195,8 @@ def process_video(input_path, output_path):
     except Exception as e:
         st.error(f"Processing Error: {e}")
     finally:
-        if 'clip' in locals(): del clip
-        if 'final_clip' in locals(): del final_clip
+        if 'clip' in locals(): clip.close()
+        if 'final_clip' in locals(): final_clip.close()
         gc.collect()
         progress.progress(100)
         status.success("Sorted successfully")
