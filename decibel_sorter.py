@@ -166,7 +166,7 @@ def process_video(input_path, output_path):
                 
             status.text("Mapping video frames...")
                 
-            def make_frame_sorted(get_frame, t):
+            def make_frame_sorted(t):
                 
                 frame_idx_new = (int(t * fps))
                 if frame_idx_new >= len(sorted_indices): frame_idx_new = len(sorted_indices) - 1
