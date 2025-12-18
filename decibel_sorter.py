@@ -156,6 +156,7 @@ def process_video(input_path, output_path):
                     
             if new_audio_segments:
                 new_audio_array = np.concatenate(new_audio_segments).astype('float32')
+                if new_audio_array.ndim == 1: new_audio_array = new_audio_array[:, np.newaxis]
                 new_audio_clip = AudioArrayClip(new_audio_array, fps=audio_bitrate)
                 
                 del new_audio_segments
@@ -177,7 +178,7 @@ def process_video(input_path, output_path):
                 return clip.get_frame(t_original)
             
             final_clip = clip.transform(lambda gf, t: make_frame_sorted(t))
-            final_clip = final_clip.set_audio(new_audio_clip)
+            final_clip = final_clip.with_audio(new_audio_clip)
     
             status.text("Rendering...")
             
