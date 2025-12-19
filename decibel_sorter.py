@@ -60,6 +60,7 @@ def get_yt_video(url, output_path):
         'outtmpl': output_path,
         'overwrites': True,
         'quiet': True,
+        'source_address': '0.0.0.0',
         'postprocessors': [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
