@@ -155,12 +155,14 @@ def process_video(input_path, output_path):
     
 
 # --- UI ---
-
 input_container = st.container()
 col_orig, col_sort = st.columns(2)
 
 if 'input_path' not in st.session_state:
     st.session_state.input_path = None
+    
+if 'output_path' not in st.session_state:
+    st.session_state.ouptut_path = None
     
 with input_container:
     file = st.file_uploader("Upload video", type=['mp4', 'mov', 'avi', 'mkv'])
@@ -179,9 +181,16 @@ if st.session_state.input_path:
         output_path = os.path.join(cache_dir, f"out_{int(time.time())}.mp4")
         process_video(st.session_state.input_path, output_path)
         
-        if os.path.exists(output_path):
-            with col_sort:
-                st.subheader("Sorted Video")
-                st.video(output_path)
-                with open(output_path, 'rb') as f:
-                    st.download_button("Download", f, file_name=f"sorted_{time.time()}.mp4")
+if st.session_state.output_path and os.path.exists(st.session_state.output_path):
+    with col_sort:
+        st.subheader("Sorted Video")
+        with open(st.session_state.output_path, 'rb') as video_file:
+            st.video(video_file.read())
+            
+            video_file.seek(0)
+            st.download_button(
+                label="Download",
+                data=video_file,
+                file_name=f"sorted_{int(time.time())}.mp4",
+                mime="video/mp4"
+            )
