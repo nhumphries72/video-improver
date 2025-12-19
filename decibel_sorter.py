@@ -113,7 +113,7 @@ def process_video(input_path, output_path):
     
             status.text("Ripping audio DNA...")
     
-            audio_bitrate = 22050
+            audio_bitrate = 44100
             audio_array = clip.audio.to_soundarray(fps=audio_bitrate).astype('float32')
     
             total_samples = len(audio_array)

@@ -9,11 +9,20 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN useradd -m -u 1000 user
 
-COPY requirements.txt .
+USER user
+
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+
+WORKDIR $HOME/app
+
+COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY --chown=user . .
 
-CMD ["/bin/bash", "-c", "streamlit run decibel_sorter.py --server.maxUploadSize 1024 --server.port $PORT --server.address 0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false"]
+EXPOSE 7860
+
+CMD ["/bin/bash", "-c", "streamlit run decibel_sorter.py --server.maxUploadSize 1024 --server.port=7860 --server.address 0.0.0.0 --server.enableCORS=false --server.enableXsrfProtection=false"]
