@@ -162,7 +162,7 @@ if 'input_path' not in st.session_state:
     st.session_state.input_path = None
     
 if 'output_path' not in st.session_state:
-    st.session_state.ouptut_path = None
+    st.session_state.output_path = None
     
 with input_container:
     file = st.file_uploader("Upload video", type=['mp4', 'mov', 'avi', 'mkv'])
