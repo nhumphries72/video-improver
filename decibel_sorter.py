@@ -11,20 +11,18 @@ import tempfile
 import gc
 
 max_duration = 300
-cache_dir = "temp_videos"
-    
+cache_dir = "temp_videos"    
 
 st.set_page_config(page_title="Video Enhancer", layout="centered")
 
+os.makedirs(cache_dir, exist_ok=True)
+
 if "first_run" not in st.session_state:
-    if not os.path.exists(cache_dir):
-        os.makedirs(cache_dir)
-    else:
-        for f in os.listdir(cache_dir):
-            try:
-                os.remove(os.path.join(cache_dir, f))
-            except:
-                pass
+    for f in os.listdir(cache_dir):
+        try:
+            os.remove(os.path.join(cache_dir, f))
+        except Exception:
+            pass
     st.session_state.first_run = True
     
 # This is to display the moviepy stdout progress bar within streamlit
