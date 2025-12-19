@@ -9,6 +9,8 @@ from proglog import ProgressBarLogger
 import shutil
 import tempfile
 import gc
+from pytube import YouTube
+from pytube.innertube import _default_clients
 
 max_duration = 300
 cache_dir = "temp_videos"    
@@ -49,55 +51,27 @@ st.markdown("""
             """)
 
 
+_default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
+
 # Helper functions
 def get_yt_video(url, output_path):
     
-    cookies_data = os.environ.get('youtube_cookies')
-    
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-        'merge_output_format': 'mp4',
-        'outtmpl': output_path,
-        'overwrites': True,
-        'quiet': True,
-        'nocheckcertificate': True,
-        'no_color': True,
-        'proxy': '',
-        'geo_bypass': True,
-        'postprocessors': [{
-            'key': 'FFmpegVideoConvertor',
-            'preferedformat': 'mp4'
-        }]
-    }
-    
-    cookie_file_path = None
-    
-    if cookies_data:
-        try:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as tmp_cookie_file:
-                tmp_cookie_file.write(cookies_data)
-                cookie_file_path = tmp_cookie_file.name
-                
-            if os.path.exists(cookie_file_path):
-                with open(cookie_file_path, 'r') as f:
-                    first_line = f.readline().strip()
-                if not first_line.startswith('# Netscape HTTP Cookie File'):
-                    st.error("Cookie file header is missing or corrupted")
-                    return
-                
-            ydl_opts['cookiefile'] = cookie_file_path
-        
-        except Exception as e:
-            st.error(f"Error handling cookie file: {e}")
-            return
-    
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    finally:
-        if cookies_data:
-            os.remove(cookie_file_path)
+        yt = YouTube(url)
+        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
         
+        if stream:
+            with st.spinner("Downloading: {yt.title}"):
+                parent_dir = os.path.dirname(output_path)
+                filename = os.path.basename(output_path)
+                stream.download(output_path=parent_dir, filename=filename)
+        else:
+            st.error("No suitable MP4 stream found")
+    
+    except Exception as e:
+        st.error(f"Pytube Error: {e}")
+        st.info("Attempting fallback downloader...")
+        os.system(f'yt-dlp -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4" "{url}" -o "{output_path}"') 
 
 def process_video(input_path, output_path):
     
