@@ -9,13 +9,6 @@ from proglog import ProgressBarLogger
 import shutil
 import tempfile
 import gc
-import socket
-
-try:
-    socket.gethostbyname("www.google.com")
-    st.sidebar.success("Internet: Connected")
-except:
-    st.sidebar.error("Internet: DNS blocked by host")
 
 max_duration = 300
 cache_dir = "temp_videos"    
@@ -67,10 +60,10 @@ def get_yt_video(url, output_path):
         'outtmpl': output_path,
         'overwrites': True,
         'quiet': True,
-        'source_address': '0.0.0.0',
-        'socket_timeout': 30,
-        'external_downloader_args': ['--dns-servers', '8.8.8.8'],
         'nocheckcertificate': True,
+        'no_color': True,
+        'proxy': '',
+        'geo_bypass': True,
         'postprocessors': [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4'
