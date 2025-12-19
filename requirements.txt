@@ -1,6 +1,4 @@
 streamlit
 numpy
 moviepy
-yt_dlp
 proglog
-pytube

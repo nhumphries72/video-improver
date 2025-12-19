@@ -2,23 +2,12 @@ import streamlit as st
 import numpy as np
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.audio.AudioClip import AudioArrayClip
-import yt_dlp
 import os
 import time
 from proglog import ProgressBarLogger
 import shutil
 import tempfile
 import gc
-from pytube import YouTube
-from pytube.innertube import _default_clients
-import socket
-
-orig_getaddrinfo = socket.getaddrinfo
-
-def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
-    return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-
-socket.getaddrinfo = getaddrinfo_ipv4
 
 max_duration = 300
 cache_dir = "temp_videos"    
@@ -58,28 +47,6 @@ st.markdown("""
     This tool improves videos by sorting them into a gradual crescendo of intensity. It sorts videos by the volume of each frame and returns the result.
             """)
 
-
-_default_clients["ANDROID_MUSIC"] = _default_clients["ANDROID_CREATOR"]
-
-# Helper functions
-def get_yt_video(url, output_path):
-    
-    try:
-        yt = YouTube(url)
-        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-        
-        if stream:
-            with st.spinner("Downloading: {yt.title}"):
-                parent_dir = os.path.dirname(output_path)
-                filename = os.path.basename(output_path)
-                stream.download(output_path=parent_dir, filename=filename)
-        else:
-            st.error("No suitable MP4 stream found")
-    
-    except Exception as e:
-        st.error(f"Pytube Error: {e}")
-        st.info("Attempting fallback downloader...")
-        os.system(f'yt-dlp -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4" "{url}" -o "{output_path}"') 
 
 def process_video(input_path, output_path):
     
@@ -189,8 +156,6 @@ def process_video(input_path, output_path):
 
 # --- UI ---
 
-input_method = st.radio("Upload file or paste link to video:", ["File Upload", "YouTube Link"])
-
 input_container = st.container()
 col_orig, col_sort = st.columns(2)
 
@@ -198,23 +163,12 @@ if 'input_path' not in st.session_state:
     st.session_state.input_path = None
     
 with input_container:
-    if input_method == "YouTube Link":
-        url = st.text_input("Paste video URL:")
-        if st.button("Download"):
-            if shutil.which("ffmpeg") is None:
-                st.error("FFmpeg is not available on the system PATH. Deployment failed to find/install it")
-            else:
-                path = os.path.join(cache_dir, f"in_{int(time.time())}.mp4")
-                with st.spinner("Downloading..."):
-                    get_yt_video(url,path)
-                st.session_state.input_path = path
-    else:
-        file = st.file_uploader("Upload video", type=['mp4', 'mov', 'avi', 'mkv'])
-        if file:
-            path = os.path.join(cache_dir, f"in_{int(time.time())}.mp4")
-            with open(path, 'wb') as f:
-                f.write(file.getbuffer())
-            st.session_state.input_path = path
+    file = st.file_uploader("Upload video", type=['mp4', 'mov', 'avi', 'mkv'])
+    if file:
+        path = os.path.join(cache_dir, f"in_{int(time.time())}.mp4")
+        with open(path, 'wb') as f:
+            f.write(file.getbuffer())
+        st.session_state.input_path = path
 
 if st.session_state.input_path:
     with col_orig:
